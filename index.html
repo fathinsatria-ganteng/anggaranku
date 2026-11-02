@@ -38,12 +38,14 @@ button.g{background:var(--bd);color:var(--tx)}
 button.l{background:none;color:var(--ac);padding:4px 6px;font-size:12px;font-weight:600}
 label{display:block;font-size:12px;color:var(--mu)}
 label.ck{display:flex;gap:8px;align-items:center;margin-bottom:8px}label.ck input{width:auto;margin:0}
+nav button{font-size:13px}input[type=checkbox]{width:auto;margin:0;flex:none}.ti{display:flex;gap:10px;align-items:flex-start}.bk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}.bk label{margin:0}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
 .h{display:none}
 </style></head><body>
 <header><h1>AnggaranKu <span id="st" class="mu s"></span></h1><nav>
 <button data-t="sum" onclick="go('sum')">Ringkasan</button>
 <button data-t="bud" onclick="go('bud')">Anggaran</button>
 <button data-t="tx" onclick="go('tx')">Transaksi</button>
+<button data-t="chart" onclick="go('chart')">Grafik</button>
 <button data-t="acc" onclick="go('acc')">Akun</button></nav></header>
 <main id="v"></main>
 <script>
@@ -79,7 +81,7 @@ const card=(k,v,s,c)=>`<div class="card"><div class="k">${k}</div><div class="v 
 const bar=(n,s,b)=>`<div class="row"><div class="rt"><span>${e(n)}</span><span class="mu">${rp(s)} / ${rp(b)}</span></div><div class="bar"><i class="${s>b?'o':''}" style="width:${b?Math.min(100,s/b*100):0}%"></i></div></div>`;
 function txList(l,d){return l.length?l.map(t=>{const sg=t.type==='out'?'−':t.type==='in'?'+':'⇄';
 const w=t.type==='tf'?`${e(A(t.acc)?.name)} → ${e(A(t.to)?.name)}`:`${e(A(t.acc)?.name||'?')}${t.cat?' · '+e(t.cat):''}`;
-return `<div class="tx"><div><b>${e(t.name)}</b><div class="mu s">${t.date} · ${w}</div></div><div class="r"><span class="${t.type}">${sg}${rp(t.amt)}</span>${d?`<div><button class="l" onclick="editTx('${t.id}')">Ubah</button><button class="l" onclick="delTx('${t.id}')">Hapus</button></div>`:''}</div></div>`}).join(''):'<p class="mu">Belum ada transaksi.</p>'}
+return `<div class="tx"><div class="ti">${d?`<input type="checkbox" ${SEL.has(t.id)?'checked':''} onchange="selTx('${t.id}',this.checked)">`:''}<div><b>${e(t.name)}</b><div class="mu s">${t.date} · ${w}</div></div></div><div class="r"><span class="${t.type}">${sg}${rp(t.amt)}</span>${d?`<div><button class="l" onclick="editTx('${t.id}')">Ubah</button><button class="l" onclick="delTx('${t.id}')">Hapus</button></div>`:''}</div></div>`}).join(''):'<p class="mu">Belum ada transaksi.</p>'}
 function vSum(){const c=calc(),cats={};
 items().forEach(i=>{const o=cats[i.cat]||(cats[i.cat]={b:0,s:0});o.b+=i.b;o.s+=spent(i)});
 return `<div class="grid">${card('Saldo operasional',rp(c.op),'Uang yang boleh dipakai')}${card('Kebutuhan tersisa',rp(c.rem),'Anggaran belum terpakai')}${card('Proyeksi sisa akhir bulan',rp(c.proj),'Operasional − kebutuhan tersisa',c.proj<0?'bad':'ok')}${card('Dana terproteksi',rp(c.prot),'Tidak ikut terpotong')}</div>
@@ -92,11 +94,11 @@ return `<div class="card"><label>Bulan<input type="month" value="${S.month}" onc
 function vTx(){const ac=S.accounts.map(a=>`<option value="${a.id}">${e(a.name)}</option>`).join('');
 const op=items().map(i=>`<option value="${i.id}">${e(i.cat)} · ${e(i.name)} (sisa ${rp(Math.max(0,i.b-spent(i)))})</option>`).join('');
 return `<div class="card"><h3>Catat transaksi</h3><select id="tt" onchange="tgl()"><option value="out">Pengeluaran</option><option value="in">Pemasukan</option><option value="tf">Pindah antar akun</option></select><input id="td" type="date" value="${today()}"><input id="tn" placeholder="Nama (mis. Ayam rumahan)"><input id="ta" type="number" inputmode="numeric" placeholder="Nominal (Rp)"><label>Akun (asal)<select id="tc">${ac}</select></label><label id="tzl" class="h">Akun tujuan<select id="tz">${ac}</select></label><div id="to"><label>Masuk ke item anggaran<select id="ti" onchange="tgl()"><option value="">Di luar rencana</option>${op}</select></label><input id="tk" list="cl" placeholder="Kategori (di luar rencana)" value="Makanan"></div><button onclick="addTx()">Simpan</button></div>
-<div class="card"><h3>Riwayat</h3>${txList(txs().reverse(),true)}</div>`}
+<div class="card"><h3>Riwayat</h3><div class="bk"><label class="ck"><input type="checkbox" onchange="selAll(this.checked)"> Pilih semua</label><button class="g" onclick="delSel()">Hapus terpilih (<span id="sc">${SEL.size}</span>)</button><button class="g" onclick="delAllTx()">Hapus semua</button></div>${txList(txs().reverse(),true)}</div>`}
 function vAcc(){return `<div class="card"><h3>Akun</h3>${S.accounts.map(a=>`<div class="tx"><div><b>${e(a.name)}</b><div class="mu s">${a.prot?'Terproteksi penuh':'Operasional'}</div></div><div class="r"><span>${rp(bal(a))}</span><div><button class="l" onclick="setBal('${a.id}')">Koreksi saldo</button><button class="l" onclick="delAcc('${a.id}')">Hapus</button></div></div></div>`).join('')}<input id="an" placeholder="Nama akun baru"><input id="ab" type="number" inputmode="numeric" placeholder="Saldo awal (Rp)"><label class="ck"><input type="checkbox" id="ap"> Seluruhnya dana terproteksi</label><button onclick="addAcc()">Tambah akun</button></div>
 <div class="card"><h3>Alokasi terproteksi</h3><p class="mu s">Bagian dari saldo akun operasional yang tidak boleh dipakai belanja. Sudah ada di saldo akun, jadi tidak dihitung dua kali.</p>${S.funds.map(f=>`<div class="tx"><div><b>${e(f.name)}</b></div><div class="r"><span>${rp(f.amt)}</span><div><button class="l" onclick="editFund('${f.id}')">Ubah</button><button class="l" onclick="delFund('${f.id}')">Hapus</button></div></div></div>`).join('')}<input id="fn" placeholder="Nama alokasi"><input id="fa" type="number" inputmode="numeric" placeholder="Nominal (Rp)"><button onclick="addFund()">Tambah alokasi</button></div>
 <div class="card"><h3>Cadangan data</h3><p class="mu s">Data tersimpan di browser perangkat ini saja. Salin cadangan lalu tempel di perangkat lain untuk memindahkannya.</p><textarea id="bk" placeholder="Teks cadangan muncul di sini, atau tempel cadangan untuk dipulihkan"></textarea><button onclick="exp()">Tampilkan dan salin cadangan</button> <button class="g" onclick="imp()">Pulihkan dari teks</button></div>`}
-function R(){document.getElementById('v').innerHTML=({sum:vSum,bud:vBud,tx:vTx,acc:vAcc})[tab]();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));if(tab==='tx')tgl()}
+function R(){document.getElementById('v').innerHTML=({sum:vSum,bud:vBud,tx:vTx,chart:vChart,acc:vAcc})[tab]();document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));if(tab==='tx')tgl()}
 function go(t){tab=t;R();scrollTo(0,0)}
 function tgl(){const t=val('tt');document.getElementById('tzl').classList.toggle('h',t!=='tf');document.getElementById('to').classList.toggle('h',t!=='out');document.getElementById('tk').classList.toggle('h',val('ti')!=='')}
 function addItem(){const c=val('ic'),n=val('in'),b=num('ib');if(!c||!n||b<=0)return alert('Isi kategori, nama, dan nominal.');S.items.push({id:uid(),m:S.month,cat:c,name:n,b});save();R()}
@@ -111,7 +113,7 @@ if(item){const it=S.items.find(x=>x.id===item);cat=it.cat;if(spent(it)+amt>it.b&
 if(!A(acc).prot&&amt>calc().op&&!confirm('Nominal melebihi saldo operasional. Tetap simpan?'))return}
 S.tx.push({id:uid(),type,date,name,amt,acc,to:type==='tf'?to:null,item,cat});save();R()}
 function editTx(id){const t=S.tx.find(x=>x.id===id),v=prompt('Nominal baru (Rp) untuk '+t.name,t.amt);if(v===null)return;const n=Math.round(+v);if(n>0){t.amt=n;save();R()}}
-function delTx(id){if(confirm('Hapus transaksi? Saldo dan anggaran dihitung ulang otomatis.')){S.tx=S.tx.filter(t=>t.id!==id);save();R()}}
+function delTx(id){SEL.delete(id);if(confirm('Hapus transaksi? Saldo dan anggaran dihitung ulang otomatis.')){S.tx=S.tx.filter(t=>t.id!==id);save();R()}}
 function setBal(id){const a=A(id),v=prompt('Saldo aktual '+a.name+' saat ini (Rp)',bal(a));if(v===null)return;const n=Math.round(+v);if(!isNaN(n)){a.init+=n-bal(a);save();R()}}
 function delAcc(id){if(S.tx.some(t=>t.acc===id||t.to===id))return alert('Akun masih punya transaksi, tidak bisa dihapus.');if(confirm('Hapus akun ini?')){S.accounts=S.accounts.filter(a=>a.id!==id);save();R()}}
 function addAcc(){const n=val('an');if(!n)return;S.accounts.push({id:uid(),name:n,init:num('ab'),prot:document.getElementById('ap').checked});save();R()}
@@ -120,5 +122,25 @@ function editFund(id){const f=S.funds.find(x=>x.id===id),v=prompt('Nominal baru 
 function delFund(id){if(confirm('Hapus alokasi ini? Uangnya akan masuk ke saldo operasional.')){S.funds=S.funds.filter(f=>f.id!==id);save();R()}}
 function exp(){const t=document.getElementById('bk');t.value=JSON.stringify(S);t.select();try{document.execCommand('copy')}catch(x){}}
 function imp(){try{const d=JSON.parse(val('bk'));if(!d.accounts||!d.tx||!d.items)throw 0;if(!confirm('Timpa semua data di perangkat ini dengan cadangan?'))return;S=d;save();R()}catch(x){alert('Teks cadangan tidak valid.')}}
+const SEL=new Set();
+function upSel(){const x=document.getElementById('sc');if(x)x.textContent=SEL.size}
+function selTx(id,c){c?SEL.add(id):SEL.delete(id);upSel()}
+function selAll(c){SEL.clear();if(c)S.tx.forEach(t=>SEL.add(t.id));document.querySelectorAll('.ti input').forEach(i=>i.checked=c);upSel()}
+function delSel(){if(!SEL.size)return alert('Pilih transaksi dulu.');if(!confirm('Hapus '+SEL.size+' transaksi terpilih? Saldo dan anggaran dihitung ulang otomatis.'))return;S.tx=S.tx.filter(t=>!SEL.has(t.id));SEL.clear();save();R()}
+function delAllTx(){if(!S.tx.length)return alert('Belum ada transaksi.');if(!confirm('Hapus SEMUA '+S.tx.length+' transaksi? Saldo akun kembali ke saldo awal.'))return;if(!confirm('Yakin? Ini tidak bisa dibatalkan.'))return;S.tx=[];SEL.clear();save();R()}
+const PAL=['#0f6e56','#d4802a','#3b6fb6','#b3446c','#7a5cc2','#2a9d8f','#c9a227','#6b7280'];
+const mTx=()=>S.tx.filter(t=>t.type==='out'&&t.date.slice(0,7)===S.month);
+const none='<p class="mu">Belum ada data untuk bulan ini.</p>';
+function days(){const[y,m]=S.month.split('-').map(Number),n=new Date(y,m,0).getDate();return Array.from({length:n},(_,i)=>S.month+'-'+String(i+1).padStart(2,'0'))}
+function donut(){const g={};mTx().forEach(t=>{const k=t.cat||'Lainnya';g[k]=(g[k]||0)+t.amt});const en=Object.entries(g).sort((a,b)=>b[1]-a[1]),tot=sum(en,x=>x[1]);if(!tot)return none;let c=0;
+const arcs=en.map(([k,v],i)=>{const p=v/tot*100,o=`<circle cx="21" cy="21" r="15.9155" fill="none" stroke="${PAL[i%8]}" stroke-width="6" stroke-dasharray="${p} ${100-p}" stroke-dashoffset="${25-c}"/>`;c+=p;return o}).join('');
+return `<svg viewBox="0 0 42 42" width="190" height="190" style="display:block;margin:0 auto 8px"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="var(--bd)" stroke-width="6"/>${arcs}<text x="21" y="20.5" text-anchor="middle" style="font-size:3px;fill:var(--mu)">Total keluar</text><text x="21" y="25" text-anchor="middle" style="font-size:3.2px;font-weight:700;fill:var(--tx)">${rp(tot)}</text></svg>`+en.map(([k,v],i)=>`<div class="tx"><div><span class="dot" style="background:${PAL[i%8]}"></span>${e(k)}</div><div class="r">${rp(v)} <span class="mu s">${Math.round(v/tot*100)}%</span></div></div>`).join('')}
+function daily(){const ds=days(),v=ds.map(d=>sum(mTx().filter(t=>t.date===d),t=>t.amt)),mx=Math.max(...v);if(!mx)return none;const w=300/ds.length;
+return `<svg viewBox="0 0 300 130" width="100%">${v.map((x,i)=>{const h=x/mx*98;return `<rect x="${i*w+1}" y="${110-h}" width="${w-2}" height="${h}" rx="1.5" style="fill:var(--ac)"/>`}).join('')}<line x1="0" y1="110" x2="300" y2="110" style="stroke:var(--bd)"/><text x="0" y="124" style="font-size:8px;fill:var(--mu)">tgl 1</text><text x="300" y="124" text-anchor="end" style="font-size:8px;fill:var(--mu)">tgl ${ds.length}</text><text x="0" y="8" style="font-size:8px;fill:var(--mu)">Tertinggi ${rp(mx)}</text></svg>`}
+function opAt(d){const np=id=>!(A(id)&&A(id).prot);let b=sum(S.accounts.filter(a=>!a.prot),a=>a.init)-sum(S.funds,f=>f.amt);for(const t of S.tx){if(t.date>d)continue;if(t.type==='in'&&np(t.acc))b+=t.amt;else if(t.type==='out'&&np(t.acc))b-=t.amt;else if(t.type==='tf'){if(np(t.acc))b-=t.amt;if(np(t.to))b+=t.amt}}return b}
+function line(){const ds=days().filter(d=>d<=today());if(!ds.length)return none;const v=ds.map(opAt),mn=Math.min(...v),mx=Math.max(...v),r=(mx-mn)||1,n=ds.length;
+const P=v.map((x,i)=>[(n>1?i/(n-1):0.5)*270+15,100-(x-mn)/r*80+10]);
+return `<svg viewBox="0 0 300 130" width="100%"><polyline points="${P.map(q=>q.join(',')).join(' ')}" fill="none" style="stroke:var(--ac);stroke-width:2"/><circle cx="${P[n-1][0]}" cy="${P[n-1][1]}" r="3.5" style="fill:var(--ac)"/><text x="0" y="8" style="font-size:8px;fill:var(--mu)">Tertinggi ${rp(mx)}</text><text x="0" y="124" style="font-size:8px;fill:var(--mu)">Terendah ${rp(mn)}</text><text x="300" y="124" text-anchor="end" style="font-size:8px;fill:var(--mu)">Terakhir ${rp(v[n-1])}</text></svg>`}
+function vChart(){const its=items();return `<div class="card"><label>Bulan<input type="month" value="${S.month}" onchange="if(this.value){S.month=this.value;save();R()}"></label></div><div class="card"><h3>Pengeluaran per kategori</h3>${donut()}</div><div class="card"><h3>Pengeluaran harian</h3>${daily()}</div><div class="card"><h3>Saldo operasional harian</h3>${line()}</div><div class="card"><h3>Realisasi per item</h3>${its.map(i=>bar(i.name,spent(i),i.b)).join('')||none}</div>`}
 R();
 </script></body></html>
